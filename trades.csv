@@ -1,0 +1,2 @@
+timestamp,symbol,side,quantity,entry_price,stop_loss,take_profit,pnl,exit_reason
+2025-11-16T15:03:03.656612,BTC/USD,buy,0.005241686622117082,95389.144,94435.25256,98250.81832,,
