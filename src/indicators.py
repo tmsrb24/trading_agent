@@ -5,58 +5,71 @@ def calculate_ema(series, length):
     """Calculates the Exponential Moving Average (EMA)."""
     return series.ewm(span=length, adjust=False).mean()
 
-def calculate_atr(high, low, close, length=14):
+def calculate_atr(high, low, close, length):
     """Calculates the Average True Range (ATR)."""
-    high_low = high - low
-    high_close = np.abs(high - close.shift())
-    low_close = np.abs(low - close.shift())
-    
-    tr = pd.DataFrame({'h_l': high_low, 'h_c': high_close, 'l_c': low_close}).max(axis=1)
-    return calculate_ema(tr, length)
+    tr = pd.DataFrame({
+        'h-l': high - low,
+        'h-pc': abs(high - close.shift()),
+        'l-pc': abs(low - close.shift())
+    }).max(axis=1)
+    atr = tr.ewm(span=length, adjust=False).mean()
+    return atr
 
-def calculate_rsi(series, length=14):
+def calculate_adx(high, low, close, length):
+    """
+    Calculates the Average Directional Index (ADX).
+    Simplified implementation for core ADX value.
+    """
+    # Calculate True Range (TR)
+    tr = pd.DataFrame({
+        'h-l': high - low,
+        'h-pc': abs(high - close.shift()),
+        'l-pc': abs(low - close.shift())
+    }).max(axis=1)
+    atr = tr.ewm(span=length, adjust=False).mean()
+
+    # Calculate Directional Movement (DM)
+    plus_dm = high.diff()
+    minus_dm = -low.diff()
+
+    plus_dm[plus_dm < 0] = 0
+    minus_dm[minus_dm < 0] = 0
+
+    # Handle cases where -DM > +DM
+    plus_dm[plus_dm > minus_dm] = plus_dm
+    minus_dm[minus_dm > plus_dm] = minus_dm
+
+    plus_di = (plus_dm.ewm(span=length, adjust=False).mean() / atr) * 100
+    minus_di = (minus_dm.ewm(span=length, adjust=False).mean() / atr) * 100
+
+    dx = abs(plus_di - minus_di) / (plus_di + minus_di) * 100
+    adx = dx.ewm(span=length, adjust=False).mean()
+    return adx
+
+def calculate_rsi(series, length):
     """Calculates the Relative Strength Index (RSI)."""
     delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=length).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=length).mean()
-    
-    rs = gain / loss
-    return 100 - (100 / (1 + rs))
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
 
-def calculate_adx(high, low, close, length=14):
-    """Calculates the Average Directional Index (ADX)."""
-    plus_dm = high.diff()
-    minus_dm = low.diff()
-    
-    plus_dm[plus_dm < 0] = 0
-    minus_dm[minus_dm > 0] = 0
-    
-    tr = pd.DataFrame({'h_l': high - low, 'h_c': np.abs(high - close.shift()), 'l_c': np.abs(low - close.shift())}).max(axis=1)
-    atr = calculate_ema(tr, length)
-    
-    plus_di = 100 * (calculate_ema(plus_dm, length) / atr)
-    minus_di = 100 * (np.abs(calculate_ema(minus_dm, length)) / atr)
-    
-    dx = 100 * (np.abs(plus_di - minus_di) / (plus_di + minus_di))
-    adx = calculate_ema(dx, length)
-    
-    return adx, plus_di, minus_di
+    avg_gain = gain.ewm(span=length, adjust=False).mean()
+    avg_loss = loss.ewm(span=length, adjust=False).mean()
 
-if __name__ == '__main__':
-    # Simple test with dummy data
-    data = {
-        'open': [10, 11, 12, 11, 10, 11, 12, 13, 14, 15, 14, 13, 12, 11, 10],
-        'high': [11, 12, 13, 12, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11],
-        'low': [9, 10, 11, 10, 9, 10, 11, 12, 13, 14, 13, 12, 11, 10, 9],
-        'close': [11, 12, 11, 10, 11, 12, 13, 14, 15, 14, 13, 12, 11, 10, 9],
-        'volume': [100]*15
-    }
-    df = pd.DataFrame(data)
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
 
-    print("--- Testing Indicators ---")
-    df['ema_10'] = calculate_ema(df['close'], length=10)
-    df['atr_14'] = calculate_atr(df['high'], df['low'], df['close'], length=14)
-    df['rsi_14'] = calculate_rsi(df['close'], length=14)
-    df['adx_14'], _, _ = calculate_adx(df['high'], df['low'], df['close'], length=14)
+def calculate_stoch(high, low, close, k, d, smooth_k):
+    """
+    Calculates the Stochastic Oscillator (%K and %D).
+    """
+    lowest_low = low.rolling(window=k).min()
+    highest_high = high.rolling(window=k).max()
 
-    print(df[['close', 'ema_10', 'atr_14', 'rsi_14', 'adx_14']].tail())
+    percent_k = ((close - lowest_low) / (highest_high - lowest_low)) * 100
+    percent_d = percent_k.rolling(window=d).mean()
+    
+    # Smooth %K with smooth_k (often 3)
+    percent_k_smoothed = percent_k.ewm(span=smooth_k, adjust=False).mean()
+
+    return percent_k_smoothed, percent_d

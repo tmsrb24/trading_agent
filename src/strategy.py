@@ -45,8 +45,7 @@ class PullbackStrategy(BaseStrategy):
         # 1. Trend Filters
         # --- LONG SIGNAL ---
         # 1. Trend Filters (Loosened as per analysis)
-        long_trend_ok = (last_candle['close'] > last_candle['ema_trend']) and \
-                        (last_candle['ema_fast'] > last_candle['ema_slow'])
+        long_trend_ok = last_candle['ema_fast'] > last_candle['ema_slow']
         
         trend_strength_ok = last_candle['adx'] > self.params['adx_threshold']
         
@@ -58,19 +57,21 @@ class PullbackStrategy(BaseStrategy):
 
         if long_trend_ok and trend_strength_ok and pullback_entry_ok and rsi_ok_long:
             # --- Final Sentiment Check ---
-            symbol_slug = self.params.get('slug')
-            if symbol_slug:
-                sentiment = self.sentiment_analyzer.get_sentiment_score(symbol_slug)
-                print(f"  Sentiment score for {symbol_slug}: {sentiment:.2f}")
-                if sentiment >= self.params['sentiment_threshold']:
+            if self.params.get('use_sentiment', True):
+                symbol_slug = self.params.get('slug')
+                if symbol_slug:
+                    sentiment = self.sentiment_analyzer.get_sentiment_score(symbol_slug, date=last_candle.name)
+                    print(f"  Sentiment score for {symbol_slug}: {sentiment:.2f}")
+                    if sentiment >= self.params['sentiment_threshold']:
+                        return 'BUY'
+                else: # If no slug, trade without sentiment
                     return 'BUY'
-            else: # If no slug, trade without sentiment
+            else: # Sentiment disabled
                 return 'BUY'
 
         # --- SHORT SIGNAL ---
         # 1. Trend Filters (Loosened)
-        short_trend_ok = (last_candle['close'] < last_candle['ema_trend']) and \
-                         (last_candle['ema_fast'] < last_candle['ema_slow'])
+        short_trend_ok = last_candle['ema_fast'] < last_candle['ema_slow']
 
         # 2. Entry Trigger (Pullback & Confirmation)
         pullback_entry_ok_short = (prev_candle['high'] >= prev_candle['ema_fast']) and \
@@ -80,13 +81,16 @@ class PullbackStrategy(BaseStrategy):
 
         if short_trend_ok and trend_strength_ok and pullback_entry_ok_short and rsi_ok_short:
             # --- Final Sentiment Check ---
-            symbol_slug = self.params.get('slug')
-            if symbol_slug:
-                sentiment = self.sentiment_analyzer.get_sentiment_score(symbol_slug)
-                print(f"  Sentiment score for {symbol_slug}: {sentiment:.2f}")
-                if sentiment <= -self.params['sentiment_threshold']:
+            if self.params.get('use_sentiment', True):
+                symbol_slug = self.params.get('slug')
+                if symbol_slug:
+                    sentiment = self.sentiment_analyzer.get_sentiment_score(symbol_slug, date=last_candle.name)
+                    print(f"  Sentiment score for {symbol_slug}: {sentiment:.2f}")
+                    if sentiment <= -self.params['sentiment_threshold']:
+                        return 'SELL'
+                else: # If no slug, trade without sentiment
                     return 'SELL'
-            else: # If no slug, trade without sentiment
+            else: # Sentiment disabled
                 return 'SELL'
 
         return 'HOLD'

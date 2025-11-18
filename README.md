@@ -1,34 +1,48 @@
-# Advanced Crypto Trading Agent
+# Advanced Crypto Trading Agent with GUI
 
-This project is a sophisticated, autonomous trading agent for cryptocurrencies, built in Python. It actively scans the market for opportunities, applies a complex trading strategy, and manages risk according to predefined rules.
+This project is a sophisticated, autonomous trading agent for cryptocurrencies, built in Python and controlled via a PyQt6 graphical user interface. It actively analyzes the market, applies configurable trading strategies, and manages risk according to a detailed ruleset.
 
 ## Core Architecture
 
-The agent is built with a modular architecture, separating different concerns into dedicated components:
+The application is composed of two main parts: a backend **Trading Agent** that runs in a separate thread, and a frontend **GUI** for control and monitoring.
 
--   **`main.py`**: The main entry point and orchestration loop for the agent.
--   **`src/api_client.py`**: Handles all communication with the Alpaca API for market data and trading.
--   **`src/scanner.py`**: Scans the market for opportunities. It uses the **CoinGecko API** to find currently trending coins, ensuring the agent focuses on assets with high market interest.
--   **`src/strategy.py`**: Contains the `PullbackStrategy`, which implements the core trading logic based on a combination of technical indicators.
--   **`src/indicators.py`**: A utility module with functions to calculate technical indicators like EMA, ATR, ADX, and RSI from scratch.
--   **`src/sentiment_analyzer.py`**: Integrates with the **Santiment API** to fetch social sentiment scores for cryptocurrencies, which are used as a final filter in the trading strategy.
--   **`src/risk_manager.py`**: Enforces all risk management rules, including position sizing based on stop-loss distance, a maximum value per trade, and portfolio-level limits (e.g., max open trades).
--   **`src/order_executor.py`**: Handles the execution of trades, placing market orders with attached stop-losses.
--   **`src/logger.py`**: Logs all executed trades to a `trades.csv` file for later analysis.
+### Backend Components (`src/` directory):
+
+-   **`agent.py`**: The core of the backend. Contains the `TradingAgent` class that orchestrates the entire trading loop, manages state, and communicates with the GUI.
+-   **`api_client.py`**: Handles all communication with the **Alpaca API** for fetching market data, account information, and placing trades.
+-   **Scanners**:
+    -   `coingecko_scanner.py`: Finds trading opportunities by fetching a list of currently trending coins from the **CoinGecko API**.
+    -   `technical_scanner.py`: Finds opportunities by scanning for coins with the highest trading volume on Alpaca.
+-   **Strategies**:
+    -   `scalping_strategy.py`: A fast-paced strategy designed for scalping, based on EMA crossovers and the Stochastic Oscillator.
+    -   `strategy.py` (contains `PullbackStrategy`): A more traditional trend-following strategy that enters on pullbacks.
+-   **`risk_manager.py`**: Enforces all risk rules defined in the configuration, including position sizing, max open trades, and daily loss limits.
+-   **`order_executor.py`**: Handles the execution of trades, placing market orders with attached stop-losses.
+-   **`logger.py`**: A professional-grade logger that outputs to both the console and a log file (`logs/trading_agent.log`).
+-   **`indicators.py`**: A utility module with functions to calculate technical indicators (EMA, ATR, ADX, RSI, Stochastics).
+
+### Frontend Components:
+
+-   **`main.py`**: The main entry point for the entire application. It launches the GUI and starts the backend agent thread.
+-   **`gui.py`**: A comprehensive dashboard built with **PyQt6**. It provides:
+    -   Start/Stop controls for the agent.
+    -   Real-time display of KPI's (Portfolio Value, P/L, etc.).
+    -   A live log stream from the agent.
+    -   A table of open positions.
+    -   A settings window to configure every aspect of the agent without touching the code.
+-   **`configs/config.ini`**: A configuration file where all strategies, scanners, and risk parameters can be tuned.
 
 ## Technologies Used
 
 -   **Python 3.9+**
--   **Alpaca API**: For paper trading execution and market data.
--   **CoinGecko API**: Used by the scanner to find trending coins.
--   **Santiment API**: Used to get social sentiment data as a strategy filter.
--   **Libraries**: `pandas`, `numpy`, `python-dotenv`, `sanpy`, `pycoingecko`, `alpaca-trade-api`.
+-   **PyQt6**: For the graphical user interface.
+-   **Alpaca API**: For paper trading and market data.
+-   **CoinGecko API**: For finding trending coins.
+-   **Libraries**: `pandas`, `numpy`, `pyqt6`, `pyqtgraph`, `alpaca-trade-api`, `pycoingecko`.
 
 ## Setup and Usage
 
-1.  **Clone the repository.**
-
-2.  **Set up the environment:**
+1.  **Set up the environment:**
     ```bash
     # Navigate into the project directory
     cd trading_agent
@@ -41,14 +55,12 @@ The agent is built with a modular architecture, separating different concerns in
     pip install -r requirements.txt
     ```
 
-3.  **Configure API Keys:**
-    -   Rename the `.env.example` file (if present) to `.env`.
-    -   Open the `.env` file and fill in your API keys:
-        -   `API_KEY` and `SECRET_KEY` from your **Alpaca paper trading account**.
-        -   `SANTIMENT_API_KEY` from your **free Santiment account**.
+2.  **Configure API Keys:**
+    -   Open the `.env` file.
+    -   Fill in your `API_KEY` and `SECRET_KEY` from your **Alpaca paper trading account**.
 
-4.  **Run the Agent:**
+3.  **Run the Application:**
     ```bash
     python3 main.py
     ```
-    The agent will start running in your terminal, scanning the market in cycles and executing trades when all conditions are met. To stop the agent, press `Ctrl+C`.
+    This will launch the GUI. From there, click the **"Start Agent"** button to begin trading. All activity will be displayed in the GUI's log window.
